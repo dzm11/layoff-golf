@@ -585,9 +585,9 @@ function updateBall(dt) {
     return fireEmployee(DROWN_MSG);
   }
 
-  // sunk? (generous: any dip below the rim counts)
-  const pit = Math.abs(b.x - hole.holeX) <= PIT_HALF;
+  // sunk? (generous: the ball tips in as soon as it overlaps the hole)
   const baseY = baseAt(hole.holeX, hole.ground);
+  const pit = Math.abs(b.x - hole.holeX) <= PIT_HALF + BALL_R - 4;
   if (pit && b.y + BALL_R > baseY + 6) {
     b.state = 'sunk';
     b.y = baseY + PIT_DEPTH - BALL_R;
@@ -595,8 +595,8 @@ function updateBall(dt) {
     return holeIn();
   }
 
-  // ground
-  const gy = groundY(b.x, hole);
+  // ground (over the pit there is no ground — the ball tips over the rim)
+  const gy = pit ? baseY + PIT_DEPTH : groundY(b.x, hole);
   if (b.y + BALL_R > gy) {
     b.y = gy - BALL_R;
     const sand = inSand(b.x, hole);
@@ -609,9 +609,9 @@ function updateBall(dt) {
     } else {
       b.vy = 0;
       b.vx *= sand ? .76 : .975; // roll friction
-      // slope pull
+      // slope pull (downhill)
       const slope = (groundY(b.x + 4, hole) - groundY(b.x - 4, hole)) / 8;
-      b.vx += slope * -220 * dt * (slope < -0.2 || slope > 0.2 ? 1 : 0);
+      if (slope < -0.2 || slope > 0.2) b.vx += slope * 240 * dt;
       // the green breaks toward the hole — magnet for rolling balls
       const dh = hole.holeX - b.x;
       if (Math.abs(dh) < 120) b.vx += Math.sign(dh) * 460 * dt;
