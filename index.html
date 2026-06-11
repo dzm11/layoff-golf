@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LAYOFF GOLF™ — Omni.com Quarterly Optimization</title>
+<meta name="description" content="A satirical game: the CEO of Omni.com plays golf with employees. Land in the hole — keep your job.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1626;
+    --ink2:#13233b;
+    --paper:#f3ead8;
+    --paper2:#e8dcc2;
+    --bull:#1ec97e;
+    --bear:#e5484d;
+    --gold:#d9a441;
+    --line:rgba(243,234,216,.18);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  /* film grain */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.07;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column}
+  #wrap{position:relative}
+  canvas#game{display:block;background:#0c1626;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.6);cursor:crosshair;touch-action:none}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;top:0;left:0;right:0;height:58px;z-index:5;
+    display:flex;align-items:stretch;gap:0;
+    background:linear-gradient(180deg,rgba(8,14,26,.92),rgba(8,14,26,.78));
+    border-bottom:1px solid var(--line);
+    font-size:12px;letter-spacing:.04em;
+  }
+  .hudCell{display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-right:1px solid var(--line);white-space:nowrap}
+  .hudLabel{font-size:9px;opacity:.55;text-transform:uppercase;letter-spacing:.18em}
+  .hudVal{font-weight:700;font-size:15px;margin-top:2px}
+  #logoCell{flex-direction:row;align-items:center;gap:10px}
+  #logoMark{width:26px;height:26px;border-radius:50%;background:conic-gradient(var(--gold),var(--bear),var(--gold));display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--ink);font-size:13px}
+  #logoCell b{font-family:'Instrument Serif',serif;font-size:20px;letter-spacing:.02em;font-weight:400}
+  #tickerCell{flex-direction:row;align-items:center;gap:12px}
+  #price{font-weight:700;font-size:17px;color:var(--bull);transition:color .2s}
+  #priceDelta{font-size:11px;color:var(--bull)}
+  #spark{display:block}
+  #windCell .hudVal{color:var(--gold)}
+  #firedCell .hudVal{color:var(--bear)}
+  #savedCell .hudVal{color:var(--bull)}
+  .spacer{flex:1;border-right:none}
+  #muteBtn{
+    align-self:center;margin-right:12px;background:none;border:1px solid var(--line);
+    color:var(--paper);font-family:inherit;font-size:13px;padding:6px 10px;cursor:pointer;border-radius:3px;
+  }
+  #muteBtn:hover{background:rgba(255,255,255,.08)}
+
+  /* employee card */
+  #empCard{
+    position:absolute;left:14px;bottom:14px;z-index:5;
+    background:var(--paper);color:var(--ink);
+    padding:10px 14px 10px 12px;max-width:340px;
+    border-left:5px solid var(--bear);
+    box-shadow:4px 4px 0 rgba(0,0,0,.45);
+    transform:rotate(-.6deg);
+    font-size:12px;line-height:1.45;
+  }
+  #empCard .tag{font-size:9px;letter-spacing:.2em;text-transform:uppercase;opacity:.55}
+  #empCard .nm{font-family:'Instrument Serif',serif;font-size:19px;line-height:1.15;margin:2px 0 1px}
+
+  /* toasts */
+  #toasts{position:absolute;right:14px;top:70px;z-index:6;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+  .toast{
+    background:var(--paper);color:var(--ink);padding:9px 13px;font-size:12px;max-width:380px;
+    border-left:5px solid var(--gold);box-shadow:4px 4px 0 rgba(0,0,0,.4);
+    animation:toastIn .25s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  .toast.bad{border-color:var(--bear)}
+  .toast.good{border-color:var(--bull)}
+  @keyframes toastIn{from{transform:translateX(40px) rotate(2deg);opacity:0}to{transform:none;opacity:1}}
+  .toast.out{animation:toastOut .4s ease both}
+  @keyframes toastOut{to{transform:translateY(-8px);opacity:0}}
+
+  /* big stock flash */
+  #stockFlash{
+    position:absolute;left:50%;top:34%;transform:translate(-50%,-50%) scale(.6);z-index:7;
+    font-family:'Instrument Serif',serif;font-size:84px;color:var(--bull);
+    text-shadow:0 0 40px rgba(30,201,126,.5),3px 3px 0 rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;white-space:nowrap;
+  }
+  #stockFlash.show{animation:flashUp 1.8s cubic-bezier(.2,1.2,.3,1) both}
+  @keyframes flashUp{
+    0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}
+    18%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}
+    30%{transform:translate(-50%,-52%) scale(1)}
+    75%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-90%) scale(1.05)}
+  }
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+    background:rgba(8,13,24,.82);backdrop-filter:blur(3px);
+  }
+  .hidden{display:none!important}
+  .memo{
+    background:var(--paper);color:var(--ink);max-width:620px;width:92%;
+    padding:34px 40px 30px;position:relative;
+    box-shadow:0 30px 70px rgba(0,0,0,.7),6px 6px 0 rgba(0,0,0,.35);
+    transform:rotate(-.7deg);
+    max-height:92%;overflow-y:auto;
+  }
+  .memo::before{
+    content:"";position:absolute;inset:8px;border:1px solid rgba(12,22,38,.25);pointer-events:none;
+  }
+  .memoHead{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:16px}
+  .memoLogo{width:44px;height:44px;border-radius:50%;background:conic-gradient(var(--gold),var(--bear),var(--gold));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px;color:var(--ink);flex:none}
+  .memoHead small{display:block;font-size:9px;letter-spacing:.25em;text-transform:uppercase;opacity:.6}
+  .memoHead b{font-family:'Instrument Serif',serif;font-size:26px;font-weight:400;line-height:1}
+  h1.gameTitle{
+    font-family:'Instrument Serif',serif;font-weight:400;font-size:58px;line-height:.95;
+    margin:6px 0 4px;letter-spacing:-.01em;
+  }
+  h1.gameTitle em{font-style:italic;color:var(--bear)}
+  .sub{font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.65;margin-bottom:18px}
+  .memo p{font-size:13px;line-height:1.65;margin-bottom:12px}
+  .memo p.sig{font-family:'Instrument Serif',serif;font-style:italic;font-size:19px;margin-top:14px}
+  .rules{
+    background:var(--paper2);border:1px dashed rgba(12,22,38,.4);padding:12px 16px;margin:14px 0 18px;
+    font-size:12px;line-height:1.7;
+  }
+  .rules b{color:var(--bear)}
+  .bigBtn{
+    display:block;width:100%;border:none;cursor:pointer;
+    background:var(--ink);color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;letter-spacing:.08em;
+    padding:16px 20px;box-shadow:5px 5px 0 var(--bear);
+    transition:transform .12s,box-shadow .12s;
+  }
+  .bigBtn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--bear)}
+  .bigBtn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--bear)}
+  .stampWrap{text-align:center;margin:6px 0 14px}
+  .stamp{
+    display:inline-block;font-family:'Instrument Serif',serif;font-size:42px;color:var(--bull);
+    border:4px solid var(--bull);padding:4px 26px;transform:rotate(-7deg);
+    text-transform:uppercase;letter-spacing:.06em;
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='80'%3E%3Cfilter id='r'%3E%3CfeTurbulence baseFrequency='0.6' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='200' height='80' fill='white' filter='url(%23r)'/%3E%3C/svg%3E");
+  }
+  .statGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 20px}
+  .statBox{background:var(--paper2);padding:10px 14px;border-left:4px solid var(--ink)}
+  .statBox small{display:block;font-size:9px;letter-spacing:.18em;text-transform:uppercase;opacity:.6}
+  .statBox b{font-size:20px}
+  .statBox.red{border-color:var(--bear)}.statBox.red b{color:var(--bear)}
+  .statBox.green{border-color:var(--bull)}.statBox.green b{color:var(--bull)}
+
+  /* cutscene caption */
+  #cutCaption{
+    position:absolute;left:50%;bottom:8%;transform:translateX(-50%);z-index:8;
+    background:var(--paper);color:var(--ink);
+    padding:14px 26px;max-width:78%;text-align:center;
+    font-family:'Instrument Serif',serif;font-size:22px;line-height:1.35;
+    box-shadow:5px 5px 0 rgba(0,0,0,.5);
+    border-left:5px solid var(--gold);
+    pointer-events:none;
+  }
+  #cutCaption small{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.55;margin-top:6px}
+  #skipHint{
+    position:absolute;right:16px;bottom:16px;z-index:8;font-size:10px;letter-spacing:.15em;
+    text-transform:uppercase;opacity:.5;pointer-events:none;
+  }
+  #holeBanner{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:7;
+    text-align:center;pointer-events:none;opacity:0;
+  }
+  #holeBanner.show{animation:bannerIn 2.4s ease both}
+  #holeBanner .hb1{font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold)}
+  #holeBanner .hb2{font-family:'Instrument Serif',serif;font-size:64px;line-height:1.05;text-shadow:3px 3px 0 rgba(0,0,0,.5)}
+  #holeBanner .hb3{font-size:12px;opacity:.75;margin-top:6px}
+  @keyframes bannerIn{
+    0%{opacity:0;transform:translate(-50%,-44%)}
+    12%{opacity:1;transform:translate(-50%,-50%)}
+    80%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-56%)}
+  }
+  @media (max-width:760px){
+    #empCard{display:none}
+    .hudCell{padding:0 9px}
+    #logoCell b{font-size:15px}
+    h1.gameTitle{font-size:40px}
+    .memo{padding:24px 22px}
+    #cutCaption{font-size:16px;padding:10px 16px}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="wrap">
+    <canvas id="game" width="1280" height="720"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div class="hudCell" id="logoCell"><span id="logoMark">Ω</span><b>Omni.com</b></div>
+      <div class="hudCell" id="tickerCell">
+        <div><span class="hudLabel">NASDAQ: OMNI</span><div><span id="price">$13.37</span> <span id="priceDelta">+0.0%</span></div></div>
+        <canvas id="spark" width="120" height="34"></canvas>
+      </div>
+      <div class="hudCell"><span class="hudLabel">Hole</span><span class="hudVal" id="holeNum">1 / 4</span></div>
+      <div class="hudCell" id="windCell"><span class="hudLabel">Winds of change</span><span class="hudVal" id="windVal">—</span></div>
+      <div class="hudCell" id="firedCell"><span class="hudLabel">Laid off</span><span class="hudVal" id="firedNum">0</span></div>
+      <div class="hudCell" id="savedCell"><span class="hudLabel">Saved</span><span class="hudVal" id="savedNum">0</span></div>
+      <div class="hudCell spacer"></div>
+      <button id="muteBtn" title="Sound">🔊</button>
+    </div>
+
+    <div id="empCard" class="hidden">
+      <span class="tag">Human resource currently on the tee</span>
+      <div class="nm" id="empName">—</div>
+      <span id="empTenure">—</span>
+    </div>
+
+    <div id="toasts"></div>
+    <div id="stockFlash"></div>
+    <div id="holeBanner"><div class="hb1">Hole</div><div class="hb2"></div><div class="hb3"></div></div>
+    <div id="cutCaption" class="hidden"></div>
+    <div id="skipHint" class="hidden">click to continue →</div>
+
+    <!-- INTRO -->
+    <div id="intro" class="overlay">
+      <div class="memo">
+        <div class="memoHead">
+          <div class="memoLogo">Ω</div>
+          <div><small>Internal memo · To: everyone (still) employed</small><b>Omni.com · Office of the CEO</b></div>
+        </div>
+        <h1 class="gameTitle">LAYOFF <em>GOLF</em>™</h1>
+        <div class="sub">Quarterly Human Resources Optimization · Q2 2026</div>
+        <p>Dear Team,</p>
+        <p>Out of deep concern for the well-being of our <b>shareholders</b>, we are launching the <i>"Flying&nbsp;Higher"</i> program. Due to record company results, we are unfortunately forced to let go of our entire <b>Product Design &amp; Development</b> division. However, every employee will receive a <b>fair, sporting chance</b> to remain with the organization.</p>
+        <div class="rules">
+          🖱️ <b>Press and drag</b> from the employee to aim — release to swing.<br>
+          ⛳ <b>Land in the hole</b> → the employee keeps their job, the stock goes up.<br>
+          📦 <b>Miss</b> → the employee leaves the company (cardboard box included in the package).<br>
+          💧 Watch out for the <b>Lake of Tears</b> and the HR sand trap.
+        </div>
+        <p class="sig">Yours in synergy,<br>Yohyn Wryn · CEO, Omni.com</p>
+        <button class="bigBtn" id="startBtn">BEGIN RESTRUCTURING ⛳</button>
+      </div>
+    </div>
+
+    <!-- HOLE COMPLETE -->
+    <div id="holeDone" class="overlay hidden">
+      <div class="memo">
+        <div class="stampWrap"><span class="stamp">Approved</span></div>
+        <h1 class="gameTitle" style="font-size:34px" id="hdTitle">Hole complete!</h1>
+        <p id="hdText" style="margin-top:10px"></p>
+        <div class="statGrid">
+          <div class="statBox green"><small>OMNI Stock</small><b id="hdStock">+23%</b></div>
+          <div class="statBox red"><small>Laid off at this hole</small><b id="hdFired">0</b></div>
+        </div>
+        <button class="bigBtn" id="nextHoleBtn">NEXT HOLE →</button>
+      </div>
+    </div>
+
+    <!-- END -->
+    <div id="endScreen" class="overlay hidden">
+      <div class="memo">
+        <div class="memoHead">
+          <div class="memoLogo">Ω</div>
+          <div><small>Press release · Mars, Omni One Colony</small><b>Omni.com · Investor Relations</b></div>
+        </div>
+        <h1 class="gameTitle" style="font-size:42px">THE END.<br><em>Don't look down.</em></h1>
+        <div class="sub">The quarter is closed. So is the planet.</div>
+        <p>The Board proudly announces that the restructuring was a success. Earth has been classified as a <b>legacy project</b> and sunset according to schedule.</p>
+        <div class="statGrid">
+          <div class="statBox green"><small>OMNI Stock</small><b id="endStock">+412%</b></div>
+          <div class="statBox red"><small>Total laid off</small><b id="endFired">0</b></div>
+          <div class="statBox green"><small>Employees saved</small><b id="endSaved">4</b></div>
+          <div class="statBox"><small>Board empathy</small><b>404</b></div>
+        </div>
+        <p class="sig">"People are our greatest expense."<br>— Yohyn Wryn, CEO (broadcasting from Mars)</p>
+        <button class="bigBtn" id="againBtn">PLAY AGAIN ↺</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ============================================================
+   LAYOFF GOLF™ — Omni.com
+   ============================================================ */
+const W = 1280, H = 720;
+const cv = document.getElementById('game');
+const cx = cv.getContext('2d');
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+cv.width = W * DPR; cv.height = H * DPR;
+cx.scale(DPR, DPR);
+
+function fitStage() {
+  const pad = 0;
+  const s = Math.min((innerWidth - pad) / W, (innerHeight - pad) / H);
+  cv.style.width = (W * s) + 'px';
+  cv.style.height = (H * s) + 'px';
+}
+addEventListener('resize', fitStage); fitStage();
+
+const $ = id => document.getElementById(id);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ---------------- AUDIO ---------------- */
+let AC = null, muted = false;
+function audio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  return AC;
+}
+function tone(freq, dur, type = 'square', vol = .12, slideTo = null, delay = 0) {
+  const ac = audio(); if (!ac || muted) return;
+  const t0 = ac.currentTime + delay;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t0); o.stop(t0 + dur + .02);
+}
+const sfx = {
+  swing()  { tone(90, .12, 'square', .2, 40); tone(800, .04, 'sawtooth', .06, 200); },
+  bounce() { tone(140, .07, 'square', .08, 90); },
+  hole()   { [523, 659, 784, 1047].forEach((f, i) => tone(f, .14, 'triangle', .14, null, i * .09)); },
+  fired()  { tone(220, .25, 'sawtooth', .1, 110); tone(165, .35, 'sawtooth', .09, 82, null, .18); },
+  splash() { tone(400, .3, 'sine', .1, 60); },
+  cash()   { tone(1318, .1, 'triangle', .12); tone(1760, .14, 'triangle', .12, null, .08); },
+  rocket() { tone(60, 2.2, 'sawtooth', .12, 200); }
+};
+$('muteBtn').addEventListener('click', e => {
+  muted = !muted; e.target.textContent = muted ? '🔇' : '🔊';
+});
+
+/* ---------------- DATA ---------------- */
+const EMPLOYEES = [
+  ['Karen', 'Senior Product Designer'], ['Dave', 'Frontend Developer'], ['Brenda', 'UX Researcher'],
+  ['Mike', 'Backend Developer'], ['Doris', 'Design Systems Lead'], ['Bob', 'QA Engineer'],
+  ['Chris', 'Junior Developer'], ['Patty', 'UX Writer'], ['Brad the Intern', 'Figma Intern'],
+  ['Mark', 'Scrum Master'], ['Yvonne', 'Product Manager'], ['Ted', 'Data Analyst'],
+  ['Dottie', 'UI Designer'], ['Hank', 'DevOps Engineer'], ['Annette', 'Product Owner'],
+  ['Rick', 'Mobile Developer'], ['Bea', 'Agile Coach'], ['Sal', 'Site Reliability Engineer'],
+  ['Celine', 'Motion Designer'], ['Walt', 'Fullstack Developer'], ['Olivia', 'UX Designer'],
+  ['Stefan', 'Lead QA Tester'], ['Lucy', 'Accessibility Specialist'], ['Edward', 'Solutions Architect']
+];
+const SCREAMS = [
+  'AAAAAA!', 'MY DESIGN SYSTEMMM!', 'THE SPRINT ISN\'T DOOONE!', 'I HAD PTO FROM TOMORROOOW!',
+  'THAT TICKET WASN\'T IN SCOOOPE!', 'WHO WILL FIX PROOOD?!',
+  'TELL THE TEAM I LOVED THEMMM!', 'I DIDN\'T PUSH TO MAIIIN!', 'IT WORKS ON MY MACHIIINE!',
+  'MY FIGMA LAYERS AREN\'T NAAAMED!'
+];
+const FIRED_MSG = [
+  '{n} — contract terminated. Package: one cardboard box and a handshake (PDF).',
+  '{n} is "leaving to pursue new challenges".',
+  '{n} — Slack access revoked mid-flight.',
+  'Restructuring has reached: {n}. LinkedIn: #OpenToWork',
+  '{n} — HR will send a layoff satisfaction survey.',
+  '{n} — replaced by an AI agent. The agent gets the desk too.'
+];
+const SAVED_MSG = [
+  '{n} keeps the job! (until next quarter)',
+  '{n} lands in the hole = lands on the team! SYNERGY!',
+  '{n} — saved. Bonus: pizza once a year.',
+  '{n} retains employment and visitation rights to the office fern.'
+];
+const DROWN_MSG = '{n} drowns in the Lake of Tears. HR: "incident not covered by benefits".';
+const OOB_MSG = '{n} has left the organization. Literally. Physically.';
+const HD_TEXTS = [
+  'Analysts are thrilled. "I have never seen such a beautiful headcount reduction" — Goldman Sachs.',
+  'The Board gives a standing ovation. Remotely, from the Maldives.',
+  'The employee happiness index dropped, so we stopped measuring it.',
+  'Management awards itself a bonus for the courage to make hard decisions about other people.'
+];
+
+/* Holes: ground = polyline [x,y]; water/sand = regions; wind px/s² */
+const HOLES = [
+  {
+    name: 'Onboarding', desc: 'The welcome hole. Your last pleasant day at the company.',
+    tee: 150, holeX: 980, wind: 0,
+    ground: [[0, 580], [380, 580], [560, 552], [760, 572], [1280, 578]],
+    water: [], sand: []
+  },
+  {
+    name: 'Open Space', desc: 'Beware the HR department\'s creative sandbox.',
+    tee: 140, holeX: 1060, wind: 0,
+    ground: [[0, 580], [470, 580], [520, 598], [730, 598], [800, 568], [1280, 572]],
+    water: [], sand: [{ x1: 520, x2: 730 }]
+  },
+  {
+    name: 'Lake of Tears', desc: 'Fed exclusively by the tears of former employees.',
+    tee: 130, holeX: 1010, wind: -70,
+    ground: [[0, 574], [470, 574], [520, 660], [770, 660], [820, 566], [1280, 570]],
+    water: [{ x1: 524, x2: 766, surf: 606 }], sand: []
+  },
+  {
+    name: 'Quarterly Massacre', desc: 'Par 1. Everything is par 1 when you have no choice.',
+    tee: 115, holeX: 1150, wind: 120,
+    ground: [[0, 586], [430, 586], [465, 604], [585, 604], [625, 582], [695, 664], [870, 664], [915, 556], [1280, 558]],
+    water: [{ x1: 680, x2: 885, surf: 614 }], sand: [{ x1: 465, x2: 585 }]
+  }
+];
+const PIT_HALF = 17, PIT_DEPTH = 56, BALL_R = 13;
+const GRAV = 1500, MAX_POW = 1650;
+
+/* ---------------- STATE ---------------- */
+const S = {
+  mode: 'menu',           // menu | play | holedone | cutscene | end
+  holeIdx: 0,
+  firedTotal: 0, firedThisHole: 0, savedTotal: 0, shots: 0,
+  price: 13.37, priceHist: [], priceStart: 13.37,
+  emp: null, empPool: [],
+  ball: null,             // {x,y,vx,vy,rot,vr,state:'ready'|'fly'|'sunk'|'gone', restT, scream, screamT}
+  drag: null,             // {sx,sy,cx,cy}
+  ceoSwing: 0,            // swing anim t
+  particles: [],
+  splashes: [],
+  shakeT: 0,
+  cut: null               // cutscene state
+};
+
+function groundY(x, hole) {
+  const g = hole.ground;
+  // pit carve
+  if (Math.abs(x - hole.holeX) <= PIT_HALF) return baseAt(hole.holeX, g) + PIT_DEPTH;
+  return baseAt(x, g);
+}
+function baseAt(x, g) {
+  if (x <= g[0][0]) return g[0][1];
+  for (let i = 1; i < g.length; i++) {
+    if (x <= g[i][0]) {
+      const [x0, y0] = g[i - 1], [x1, y1] = g[i];
+      return lerp(y0, y1, (x - x0) / (x1 - x0));
+    }
+  }
+  return g[g.length - 1][1];
+}
+function inSand(x, hole) { return hole.sand.some(s => x >= s.x1 && x <= s.x2); }
+function waterAt(x, hole) { return hole.water.find(w => x >= w.x1 && x <= w.x2) || null; }
+
+/* ---------------- EMPLOYEES ---------------- */
+function nextEmployee() {
+  if (!S.empPool.length) S.empPool = EMPLOYEES.slice().sort(() => Math.random() - .5);
+  const [name, dept] = S.empPool.pop();
+  const years = Math.floor(rnd(1, 31));
+  S.emp = {
+    name, dept, years,
+    shirt: pick(['#4a7fb5', '#b5564a', '#5a9e6f', '#8a6fb5', '#b59a4a', '#5ab0a8']),
+    skin: pick(['#f0c8a0', '#e8b48c', '#c89068', '#f5d6b8'])
+  };
+  const hole = HOLES[S.holeIdx];
+  S.ball = {
+    x: hole.tee, y: groundY(hole.tee, hole) - BALL_R, vx: 0, vy: 0,
+    rot: 0, vr: 0, state: 'ready', restT: 0, scream: '', screamT: 0
+  };
+  $('empName').textContent = name + ' · ' + dept;
+  $('empTenure').textContent = years + (years === 1 ? ' year' : ' years') + ' at the company · annual review: "meets expectations"';
+}
+
+/* ---------------- STOCK ---------------- */
+function pushPrice() {
+  S.priceHist.push(S.price);
+  if (S.priceHist.length > 40) S.priceHist.shift();
+  drawSpark();
+  const pct = (S.price / S.priceStart - 1) * 100;
+  $('price').textContent = '$' + S.price.toFixed(2);
+  $('priceDelta').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+}
+function bumpPrice(mult, big) {
+  S.price *= mult;
+  pushPrice();
+  if (big) {
+    const pct = ((mult - 1) * 100).toFixed(0);
+    const f = $('stockFlash');
+    f.textContent = '📈 STOCK +' + pct + '%';
+    f.classList.remove('show'); void f.offsetWidth; f.classList.add('show');
+    sfx.cash();
+  }
+}
+function drawSpark() {
+  const sc = $('spark'), c = sc.getContext('2d');
+  c.clearRect(0, 0, 120, 34);
+  const h = S.priceHist; if (h.length < 2) return;
+  const mn = Math.min(...h), mx = Math.max(...h), span = (mx - mn) || 1;
+  c.beginPath();
+  h.forEach((p, i) => {
+    const x = i / (h.length - 1) * 116 + 2, y = 30 - (p - mn) / span * 26;
+    i ? c.lineTo(x, y) : c.moveTo(x, y);
+  });
+  c.strokeStyle = '#1ec97e'; c.lineWidth = 1.6; c.stroke();
+  c.lineTo(118, 33); c.lineTo(2, 33); c.closePath();
+  c.fillStyle = 'rgba(30,201,126,.15)'; c.fill();
+}
+
+/* ---------------- TOASTS ---------------- */
+function toast(msg, cls = '', dur = 4200) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + cls; t.textContent = msg;
+  $('toasts').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 420); }, dur);
+}
+const fmt = (tpl) => tpl.replace('{n}', S.emp.name + ' (' + S.emp.dept + ')');
+
+/* ---------------- INPUT ---------------- */
+function canvasPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+}
+cv.addEventListener('pointerdown', e => {
+  audio() && AC.state === 'suspended' && AC.resume();
+  if (S.mode === 'cutscene') { S.cut.skipReq = true; return; }
+  if (S.mode !== 'play' || !S.ball || S.ball.state !== 'ready') return;
+  const p = canvasPos(e);
+  S.drag = { sx: p.x, sy: p.y, cx: p.x, cy: p.y };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if (!S.drag) return;
+  const p = canvasPos(e);
+  S.drag.cx = p.x; S.drag.cy = p.y;
+});
+cv.addEventListener('pointerup', e => {
+  if (!S.drag) return;
+  const d = S.drag; S.drag = null;
+  const dx = (d.sx - d.cx) * 4.2, dy = (d.sy - d.cy) * 4.2;
+  const pow = Math.hypot(dx, dy);
+  if (pow < 90) return; // too weak, cancel
+  const k = Math.min(pow, MAX_POW) / pow;
+  const b = S.ball;
+  b.vx = dx * k; b.vy = dy * k;
+  b.state = 'fly'; b.vr = b.vx * .02;
+  b.scream = pick(SCREAMS); b.screamT = 1.6;
+  S.shots++; S.ceoSwing = .001;
+  sfx.swing();
+});
+
+/* ---------------- PHYSICS ---------------- */
+function dragVector() {
+  const d = S.drag; if (!d) return null;
+  let dx = (d.sx - d.cx) * 4.2, dy = (d.sy - d.cy) * 4.2;
+  const pow = Math.hypot(dx, dy);
+  if (pow > MAX_POW) { dx *= MAX_POW / pow; dy *= MAX_POW / pow; }
+  return { dx, dy, pow: Math.min(pow, MAX_POW) };
+}
+
+function updateBall(dt) {
+  const b = S.ball, hole = HOLES[S.holeIdx];
+  if (!b || b.state !== 'fly') return;
+
+  b.vy += GRAV * dt;
+  b.vx += hole.wind * dt;
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  b.rot += b.vr * dt * 6;
+  if (b.screamT > 0) b.screamT -= dt;
+
+  // out of bounds
+  if (b.x < -60 || b.x > W + 60 || b.y > H + 80) {
+    return fireEmployee(OOB_MSG);
+  }
+
+  // water
+  const w = waterAt(b.x, hole);
+  if (w && b.y + BALL_R * .4 > w.surf) {
+    S.splashes.push({ x: b.x, y: w.surf, t: 0 });
+    sfx.splash();
+    return fireEmployee(DROWN_MSG);
+  }
+
+  // sunk?
+  const pit = Math.abs(b.x - hole.holeX) <= PIT_HALF;
+  const baseY = baseAt(hole.holeX, hole.ground);
+  if (pit && b.y > baseY + 14) {
+    b.state = 'sunk';
+    b.y = baseY + PIT_DEPTH - BALL_R;
+    b.x = hole.holeX;
+    return holeIn();
+  }
+
+  // ground
+  const gy = groundY(b.x, hole);
+  if (b.y + BALL_R > gy) {
+    b.y = gy - BALL_R;
+    const sand = inSand(b.x, hole);
+    if (Math.abs(b.vy) > 60) {
+      b.vy = -b.vy * (sand ? .12 : .45);
+      b.vx *= sand ? .35 : .78;
+      b.vr = b.vx * .02;
+      if (!sand) sfx.bounce();
+      puff(b.x, gy, sand ? '#cdb280' : '#7ec88a');
+    } else {
+      b.vy = 0;
+      b.vx *= sand ? .76 : .965; // roll friction
+      // slope pull
+      const slope = (groundY(b.x + 4, hole) - groundY(b.x - 4, hole)) / 8;
+      b.vx += slope * -220 * dt * (slope < -0.2 || slope > 0.2 ? 1 : 0);
+    }
+    if (Math.abs(b.vx) < 9 && Math.abs(b.vy) < 9) {
+      b.restT += dt;
+      if (b.restT > .65) return fireEmployee(pick(FIRED_MSG));
+    } else b.restT = 0;
+  }
+}
+
+function fireEmployee(msgTpl) {
+  const b = S.ball;
+  b.state = 'gone';
+  S.firedTotal++; S.firedThisHole++;
+  $('firedNum').textContent = S.firedTotal;
+  toast(fmt(msgTpl), 'bad');
+  sfx.fired();
+  bumpPrice(rnd(1.004, 1.012), false); // market loves layoffs
+  // box of belongings particle
+  for (let i = 0; i < 10; i++) puff(b.x, b.y, '#d9a441');
+  setTimeout(() => { if (S.mode === 'play') nextEmployee(); }, 900);
+}
+
+function holeIn() {
+  S.savedTotal++;
+  $('savedNum').textContent = S.savedTotal;
+  toast(fmt(pick(SAVED_MSG)), 'good', 5000);
+  sfx.hole();
+  S.shakeT = .4;
+  for (let i = 0; i < 26; i++) puff(S.ball.x, S.ball.y - 30, pick(['#1ec97e', '#d9a441', '#f3ead8']));
+  const mult = rnd(1.15, 1.31);
+  setTimeout(() => bumpPrice(mult, true), 500);
+  setTimeout(() => showHoleDone(mult), 2100);
+}
+
+function puff(x, y, col) {
+  S.particles.push({ x, y, vx: rnd(-160, 160), vy: rnd(-320, -40), t: rnd(.5, 1.1), col, r: rnd(2, 5) });
+}
+function updateFx(dt) {
+  S.particles = S.particles.filter(p => (p.t -= dt) > 0);
+  S.particles.forEach(p => { p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; });
+  S.splashes = S.splashes.filter(s => (s.t += dt) < .8);
+  if (S.shakeT > 0) S.shakeT -= dt;
+  if (S.ceoSwing > 0) { S.ceoSwing += dt * 4; if (S.ceoSwing > 1.6) S.ceoSwing = 0; }
+}
+
+/* ---------------- FLOW ---------------- */
+function startGame() {
+  S.mode = 'play'; S.holeIdx = 0;
+  S.firedTotal = 0; S.firedThisHole = 0; S.savedTotal = 0; S.shots = 0;
+  S.price = 13.37; S.priceHist = [13.37];
+  $('firedNum').textContent = 0; $('savedNum').textContent = 0;
+  pushPrice();
+  $('intro').classList.add('hidden');
+  $('endScreen').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  $('empCard').classList.remove('hidden');
+  loadHole(0);
+}
+function loadHole(i) {
+  S.holeIdx = i; S.firedThisHole = 0;
+  const h = HOLES[i];
+  $('holeNum').textContent = (i + 1) + ' / 4';
+  $('windVal').textContent = h.wind === 0 ? 'none' : (h.wind > 0 ? '→ ' : '← ') + Math.abs(Math.round(h.wind / 10));
+  nextEmployee();
+  const hb = $('holeBanner');
+  hb.querySelector('.hb2').textContent = '№' + (i + 1) + ' "' + h.name + '"';
+  hb.querySelector('.hb3').textContent = h.desc;
+  hb.classList.remove('show'); void hb.offsetWidth; hb.classList.add('show');
+}
+function showHoleDone(mult) {
+  if (S.holeIdx >= 3) return startCutscene();
+  S.mode = 'holedone';
+  $('hdTitle').textContent = 'Hole "' + HOLES[S.holeIdx].name + '" complete!';
+  $('hdText').textContent = pick(HD_TEXTS);
+  $('hdStock').textContent = '+' + ((mult - 1) * 100).toFixed(0) + '%';
+  $('hdFired').textContent = S.firedThisHole;
+  $('holeDone').classList.remove('hidden');
+}
+$('startBtn').addEventListener('click', startGame);
+$('againBtn').addEventListener('click', startGame);
+$('nextHoleBtn').addEventListener('click', () => {
+  $('holeDone').classList.add('hidden');
+  S.mode = 'play';
+  loadHole(S.holeIdx + 1);
+});
+
+/* ============================================================
+   RENDERING — course
+   ============================================================ */
+function skyGrad(top, mid, bot) {
+  const g = cx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, top); g.addColorStop(.55, mid); g.addColorStop(1, bot);
+  return g;
+}
+function drawCourse() {
+  const hole = HOLES[S.holeIdx];
+  // sky — corporate dawn
+  cx.fillStyle = skyGrad('#1a2b47', '#3e4f6e', '#c98a5b');
+  cx.fillRect(0, 0, W, H);
+  // sun (stock-chart red, obviously)
+  cx.fillStyle = 'rgba(229,72,77,.85)';
+  cx.beginPath(); cx.arc(1050, 180, 56, 0, 7); cx.fill();
+  cx.fillStyle = 'rgba(229,72,77,.18)';
+  cx.beginPath(); cx.arc(1050, 180, 95, 0, 7); cx.fill();
+
+  drawSkyline();
+  drawChartLine();
+
+  // ground fill
+  cx.beginPath(); cx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 4) cx.lineTo(x, groundY(x, hole));
+  cx.lineTo(W, H); cx.closePath();
+  const gg = cx.createLinearGradient(0, 440, 0, H);
+  gg.addColorStop(0, '#3f8f55'); gg.addColorStop(.25, '#2e7344'); gg.addColorStop(1, '#15402a');
+  cx.fillStyle = gg; cx.fill();
+  // turf top line
+  cx.beginPath();
+  for (let x = 0; x <= W; x += 4) { const y = groundY(x, hole); x ? cx.lineTo(x, y) : cx.moveTo(x, y); }
+  cx.strokeStyle = '#5fbf76'; cx.lineWidth = 3; cx.stroke();
+
+  // mow stripes
+  cx.save(); cx.globalAlpha = .07;
+  for (let x = 0; x < W; x += 90) {
+    cx.beginPath(); cx.moveTo(x, groundY(x, hole));
+    cx.lineTo(x + 45, groundY(x + 45, hole));
+    cx.lineTo(x + 45, H); cx.lineTo(x, H); cx.closePath();
+    cx.fillStyle = '#fff'; cx.fill();
+  }
+  cx.restore();
+
+  // sand
+  hole.sand.forEach(s => {
+    cx.beginPath(); cx.moveTo(s.x1, groundY(s.x1, hole));
+    for (let x = s.x1; x <= s.x2; x += 4) cx.lineTo(x, groundY(x, hole));
+    for (let x = s.x2; x >= s.x1; x -= 4) cx.lineTo(x, groundY(x, hole) + 16);
+    cx.closePath(); cx.fillStyle = '#d8bd86'; cx.fill();
+    cx.fillStyle = 'rgba(0,0,0,.12)';
+    for (let i = 0; i < 14; i++) cx.fillRect(s.x1 + ((i * 53) % (s.x2 - s.x1)), groundY(s.x1 + ((i * 53) % (s.x2 - s.x1)), hole) + 4 + (i % 3) * 4, 4, 2);
+  });
+
+  // water
+  hole.water.forEach(w => {
+    const t = perf / 600;
+    cx.beginPath(); cx.moveTo(w.x1, w.surf);
+    for (let x = w.x1; x <= w.x2; x += 6) cx.lineTo(x, w.surf + Math.sin(x * .05 + t) * 2.5);
+    cx.lineTo(w.x2, groundY(w.x2 - 2, hole));
+    for (let x = w.x2; x >= w.x1; x -= 6) cx.lineTo(x, Math.min(groundY(x, hole), 720));
+    cx.closePath();
+    const wg = cx.createLinearGradient(0, w.surf, 0, w.surf + 70);
+    wg.addColorStop(0, 'rgba(90,160,220,.92)'); wg.addColorStop(1, 'rgba(20,50,100,.95)');
+    cx.fillStyle = wg; cx.fill();
+    cx.strokeStyle = 'rgba(255,255,255,.5)'; cx.lineWidth = 1.5;
+    cx.beginPath();
+    for (let x = w.x1; x <= w.x2; x += 6) { const y = w.surf + Math.sin(x * .05 + t) * 2.5; x === w.x1 ? cx.moveTo(x, y) : cx.lineTo(x, y); }
+    cx.stroke();
+    // sign
+    drawSign((w.x1 + w.x2) / 2, w.surf - 8, 'LAKE OF TEARS');
+  });
+
+  drawPit(hole);
+  drawTeeProps(hole);
+}
+function drawSkyline() {
+  cx.save();
+  cx.fillStyle = 'rgba(12,22,38,.55)';
+  const bs = [[60,120,300],[200,90,380],[310,140,260],[470,70,420],[560,110,330],[840,80,400],[940,130,290],[1090,95,350],[1200,80,310]];
+  bs.forEach(([x, w2, h2]) => {
+    cx.fillRect(x, 560 - h2, w2, h2);
+  });
+  // OMNI tower
+  cx.fillStyle = 'rgba(12,22,38,.8)';
+  cx.fillRect(660, 110, 120, 460);
+  cx.fillStyle = 'rgba(217,164,65,.9)';
+  cx.font = '700 22px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText('OMNI', 720, 150);
+  // lit windows (only the executive floor)
+  cx.fillStyle = 'rgba(255,220,140,.75)';
+  for (let i = 0; i < 5; i++) cx.fillRect(672 + i * 20, 165, 12, 14);
+  cx.fillStyle = 'rgba(255,255,255,.06)';
+  for (let r = 0; r < 16; r++) for (let i = 0; i < 5; i++) cx.fillRect(672 + i * 20, 195 + r * 22, 12, 14);
+  cx.restore();
+}
+function drawChartLine() {
+  // a giant green stock line crossing the sky
+  cx.save(); cx.globalAlpha = .25;
+  cx.beginPath(); cx.moveTo(-10, 420);
+  const pts = [[140, 380], [260, 410], [400, 330], [520, 360], [680, 250], [820, 290], [980, 170], [1150, 200], [1300, 80]];
+  pts.forEach(p => cx.lineTo(p[0], p[1]));
+  cx.strokeStyle = '#1ec97e'; cx.lineWidth = 4; cx.stroke();
+  cx.globalAlpha = .5;
+  cx.fillStyle = '#1ec97e';
+  cx.font = '700 14px "IBM Plex Mono"';
+  cx.fillText('OMNI ▲', 1180, 70);
+  cx.restore();
+}
+function drawPit(hole) {
+  const bx = hole.holeX, by = baseAt(bx, hole.ground);
+  // pit walls
+  cx.fillStyle = '#0d2417';
+  cx.fillRect(bx - PIT_HALF, by, PIT_HALF * 2, PIT_DEPTH);
+  cx.fillStyle = 'rgba(0,0,0,.5)';
+  cx.fillRect(bx - PIT_HALF, by, PIT_HALF * 2, 10);
+  // flag
+  cx.strokeStyle = '#e8dcc2'; cx.lineWidth = 3;
+  cx.beginPath(); cx.moveTo(bx, by + 6); cx.lineTo(bx, by - 92); cx.stroke();
+  const wave = Math.sin(perf / 300) * 4;
+  cx.beginPath();
+  cx.moveTo(bx, by - 92);
+  cx.lineTo(bx + 56 + wave, by - 78);
+  cx.lineTo(bx, by - 64);
+  cx.closePath();
+  cx.fillStyle = '#e5484d'; cx.fill();
+  cx.fillStyle = '#f3ead8'; cx.font = '700 13px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText('JOB', bx + 24, by - 73);
+}
+function drawSign(x, y, txt) {
+  cx.save();
+  cx.translate(x, y);
+  cx.strokeStyle = '#7a5a38'; cx.lineWidth = 4;
+  cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(0, -34); cx.stroke();
+  cx.fillStyle = '#e8dcc2';
+  cx.fillRect(-52, -56, 104, 24);
+  cx.fillStyle = '#0c1626'; cx.font = '700 10px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText(txt, 0, -40);
+  cx.restore();
+}
+function drawTeeProps(hole) {
+  const tx = hole.tee, ty = groundY(hole.tee, hole);
+  // pile of moving boxes behind tee
+  cx.save();
+  const bx = tx - 92;
+  for (let i = 0; i < 3; i++) {
+    const w2 = 46 - i * 6, y = ty - 22 * (i + 1);
+    cx.fillStyle = '#c79a5e';
+    cx.fillRect(bx - w2 / 2, y, w2, 22);
+    cx.strokeStyle = 'rgba(0,0,0,.35)'; cx.lineWidth = 1.5;
+    cx.strokeRect(bx - w2 / 2, y, w2, 22);
+    cx.beginPath(); cx.moveTo(bx, y); cx.lineTo(bx, y + 22); cx.stroke();
+  }
+  cx.fillStyle = '#0c1626'; cx.font = '700 8px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText('STUFF', bx, ty - 52);
+  cx.restore();
+  // queue of waiting employees (tiny, far left)
+  for (let i = 0; i < 4; i++) {
+    drawTinyPerson(18 + i * 22, ty - 1, .55, '#8895a8');
+  }
+  drawSign(60, ty, 'LAYOFF QUEUE');
+}
+function drawTinyPerson(x, y, s, col) {
+  cx.save(); cx.translate(x, y); cx.scale(s, s);
+  cx.fillStyle = col;
+  cx.beginPath(); cx.arc(0, -34, 7, 0, 7); cx.fill();
+  cx.fillRect(-6, -27, 12, 20);
+  cx.fillRect(-6, -7, 4, 8); cx.fillRect(2, -7, 4, 8);
+  cx.restore();
+}
+
+/* ---------------- CEO ---------------- */
+function drawCEO(hole) {
+  const tx = hole.tee - 34, ty = groundY(hole.tee, hole);
+  cx.save();
+  cx.translate(tx, ty);
+  // legs — plaid golf pants
+  cx.fillStyle = '#b5564a';
+  cx.fillRect(-12, -46, 10, 44); cx.fillRect(3, -46, 10, 44);
+  cx.strokeStyle = 'rgba(255,255,255,.35)'; cx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) {
+    cx.beginPath(); cx.moveTo(-12, -40 + i * 11); cx.lineTo(13, -40 + i * 11); cx.stroke();
+  }
+  // shoes
+  cx.fillStyle = '#f3ead8';
+  cx.fillRect(-16, -4, 16, 5); cx.fillRect(2, -4, 16, 5);
+  // torso — polo
+  cx.fillStyle = '#1a2b47';
+  cx.fillRect(-15, -88, 31, 44);
+  cx.fillStyle = '#d9a441';
+  cx.fillRect(-15, -88, 31, 6);
+  // head
+  cx.fillStyle = '#f0c0a0';
+  cx.beginPath(); cx.arc(0, -102, 14, 0, 7); cx.fill();
+  // silver power-hair
+  cx.fillStyle = '#cfd4dc';
+  cx.beginPath(); cx.arc(0, -107, 14, Math.PI, 0); cx.fill();
+  cx.fillRect(-14, -110, 28, 6);
+  // smug face
+  cx.fillStyle = '#0c1626';
+  cx.fillRect(-6, -104, 3, 3); cx.fillRect(4, -104, 3, 3);
+  cx.beginPath(); cx.arc(0, -96, 5, .15 * Math.PI, .85 * Math.PI); cx.strokeStyle = '#0c1626'; cx.lineWidth = 2; cx.stroke();
+  // arms + club (swing animation)
+  let ang = -.45; // resting back
+  if (S.ceoSwing > 0) {
+    const t = S.ceoSwing;
+    ang = t < .3 ? lerp(-.45, -2.2, t / .3) : t < .5 ? lerp(-2.2, 1.15, (t - .3) / .2) : lerp(1.15, -.45, Math.min(1, (t - .5) / 1.1));
+  } else if (S.drag) {
+    const v = dragVector();
+    ang = -.45 - (v ? v.pow / MAX_POW : 0) * 1.6;
+  }
+  cx.save();
+  cx.translate(8, -76);
+  cx.rotate(ang);
+  cx.strokeStyle = '#f0c0a0'; cx.lineWidth = 7; cx.lineCap = 'round';
+  cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(22, 16); cx.stroke();
+  cx.strokeStyle = '#9aa3b2'; cx.lineWidth = 4;
+  cx.beginPath(); cx.moveTo(22, 16); cx.lineTo(46, 52); cx.stroke();
+  cx.fillStyle = '#9aa3b2'; cx.fillRect(44, 50, 12, 8);
+  cx.restore();
+  // name tag
+  cx.fillStyle = 'rgba(243,234,216,.92)';
+  cx.fillRect(-58, -150, 118, 26);
+  cx.fillStyle = '#0c1626'; cx.font = '700 11px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText('YOHYN WRYN · CEO', 1, -133);
+  cx.restore();
+}
+
+/* ---------------- EMPLOYEE BALL ---------------- */
+function drawBall() {
+  const b = S.ball; if (!b || b.state === 'gone') return;
+  const e = S.emp;
+  cx.save();
+  cx.translate(b.x, b.y);
+  cx.rotate(b.rot);
+  // curled-up employee
+  cx.fillStyle = e.shirt;
+  cx.beginPath(); cx.arc(0, 0, BALL_R, 0, 7); cx.fill();
+  cx.strokeStyle = 'rgba(0,0,0,.25)'; cx.lineWidth = 1.5; cx.stroke();
+  // head poking out
+  cx.fillStyle = e.skin;
+  cx.beginPath(); cx.arc(0, -BALL_R + 4, 6.5, 0, 7); cx.fill();
+  // terrified face
+  cx.fillStyle = '#0c1626';
+  cx.fillRect(-3.4, -BALL_R + 1.5, 1.8, 1.8); cx.fillRect(1.6, -BALL_R + 1.5, 1.8, 1.8);
+  cx.beginPath(); cx.arc(0, -BALL_R + 6.4, 1.9, 0, 7); cx.fill(); // open mouth
+  // tie flapping
+  cx.strokeStyle = '#e5484d'; cx.lineWidth = 3;
+  cx.beginPath(); cx.moveTo(0, -4); cx.lineTo(b.state === 'fly' ? -8 : 0, 4); cx.stroke();
+  // little arms hugging knees
+  cx.strokeStyle = e.skin; cx.lineWidth = 3; cx.lineCap = 'round';
+  cx.beginPath(); cx.arc(0, 2, 7, .2, 2.8); cx.stroke();
+  cx.restore();
+
+  // scream bubble
+  if (b.state === 'fly' && b.screamT > 0) {
+    cx.save();
+    cx.globalAlpha = clamp(b.screamT, 0, 1);
+    cx.font = 'italic 700 15px "IBM Plex Mono"';
+    cx.fillStyle = '#f3ead8';
+    cx.strokeStyle = 'rgba(0,0,0,.6)'; cx.lineWidth = 3; cx.textAlign = 'center';
+    cx.strokeText(b.scream, b.x, b.y - 28);
+    cx.fillText(b.scream, b.x, b.y - 28);
+    cx.restore();
+  }
+  // name floating above when ready
+  if (b.state === 'ready') {
+    cx.save();
+    const bob = Math.sin(perf / 350) * 3;
+    cx.font = '700 11px "IBM Plex Mono"'; cx.textAlign = 'center';
+    cx.fillStyle = 'rgba(243,234,216,.95)';
+    cx.fillText(e.name, b.x, b.y - 34 + bob);
+    cx.fillStyle = 'rgba(243,234,216,.55)';
+    cx.fillText('▼', b.x, b.y - 22 + bob);
+    cx.restore();
+  }
+}
+
+/* ---------------- AIM ---------------- */
+function drawAim() {
+  const v = dragVector(); if (!v || !S.ball) return;
+  const b = S.ball, hole = HOLES[S.holeIdx];
+  // simulated trajectory dots
+  let x = b.x, y = b.y, vx = v.dx, vy = v.dy;
+  cx.save();
+  for (let i = 0; i < 90; i++) {
+    vy += GRAV * (1 / 60); vx += hole.wind * (1 / 60);
+    x += vx / 60; y += vy / 60;
+    if (y > groundY(x, hole)) break;
+    if (i % 5 === 0) {
+      cx.globalAlpha = clamp(1 - i / 80, .15, .9);
+      cx.fillStyle = '#f3ead8';
+      cx.beginPath(); cx.arc(x, y, 3.4 - i * .02, 0, 7); cx.fill();
+    }
+  }
+  cx.restore();
+  // power bar
+  const p = v.pow / MAX_POW;
+  cx.save();
+  cx.translate(b.x, b.y + 30);
+  cx.fillStyle = 'rgba(0,0,0,.45)';
+  cx.fillRect(-44, 0, 88, 10);
+  cx.fillStyle = p > .8 ? '#e5484d' : p > .5 ? '#d9a441' : '#1ec97e';
+  cx.fillRect(-42, 2, 84 * p, 6);
+  cx.fillStyle = '#f3ead8'; cx.font = '700 9px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText('SEVERANCE FORCE', 0, 22);
+  cx.restore();
+}
+
+/* ---------------- FX ---------------- */
+function drawFx() {
+  S.particles.forEach(p => {
+    cx.globalAlpha = clamp(p.t, 0, 1);
+    cx.fillStyle = p.col;
+    cx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
+  });
+  cx.globalAlpha = 1;
+  S.splashes.forEach(s => {
+    const r = s.t * 90, a = 1 - s.t / .8;
+    cx.strokeStyle = 'rgba(160,210,255,' + a + ')';
+    cx.lineWidth = 3;
+    cx.beginPath(); cx.ellipse(s.x, s.y, r, r * .3, 0, 0, 7); cx.stroke();
+  });
+}
+
+/* ============================================================
+   CUTSCENES — handshake → kiss → Mars
+   ============================================================ */
+function startCutscene() {
+  S.mode = 'cutscene';
+  $('empCard').classList.add('hidden');
+  $('skipHint').classList.remove('hidden');
+  S.cut = { scene: 0, t: 0, skipReq: false, capIdx: -1 };
+  sfx.hole();
+}
+const SCENES = [
+  { dur: 7, caps: [
+    [0,   'Four holes. Four jobs saved. Wall Street is weeping with joy.', 'Quarter closed'],
+    [3.2, '"Beautiful layoffs, Yohyn. Brings a tear to the eye. Someone else\'s."', 'Jeff Bezos · a handshake worthy of a CEO']
+  ]},
+  { dur: 6, caps: [
+    [0,   '"That is the bravest chart I have ever seen." *smooch*', 'Elon Musk · the kiss of approval'],
+    [3.4, 'The Board: "Is this synergy yet, or is it still HR-compliant?"', '']
+  ]},
+  { dur: 13, caps: [
+    [0,   'Time to run— I mean: time for a NEW CHAPTER. Destination: Mars!', 'Omni One · business trip, business class'],
+    [4.5, 'Earth? Earth is a legacy project. Nobody likes maintaining legacy.', ''],
+    [9,   'Employees will receive a recording of the flight. In 360p.', 'Internal Communications']
+  ]}
+];
+function updateCutscene(dt) {
+  const c = S.cut;
+  c.t += dt;
+  const sc = SCENES[c.scene];
+  if (c.skipReq) { c.skipReq = false; c.t = sc.dur; }
+  // captions
+  let idx = -1;
+  sc.caps.forEach((cap, i) => { if (c.t >= cap[0]) idx = i; });
+  if (idx !== c.capIdx) {
+    c.capIdx = idx;
+    const el = $('cutCaption');
+    if (idx >= 0) {
+      el.classList.remove('hidden');
+      el.innerHTML = sc.caps[idx][1] + (sc.caps[idx][2] ? '<small>' + sc.caps[idx][2] + '</small>' : '');
+    }
+  }
+  if (c.t >= sc.dur) {
+    c.scene++; c.t = 0; c.capIdx = -1;
+    if (c.scene === 2) sfx.rocket();
+    if (c.scene >= SCENES.length) endGame();
+  }
+}
+function endGame() {
+  S.mode = 'end';
+  $('cutCaption').classList.add('hidden');
+  $('skipHint').classList.add('hidden');
+  const pct = ((S.price / S.priceStart - 1) * 100).toFixed(0);
+  $('endStock').textContent = '+' + pct + '%';
+  $('endFired').textContent = S.firedTotal;
+  $('endSaved').textContent = S.savedTotal;
+  $('endScreen').classList.remove('hidden');
+}
+
+/* --- cutscene drawing helpers --- */
+function person(x, y, s, opt) {
+  // opt: {skin, shirt, pants, hair:'silver'|'bald'|'musk', smug, lean}
+  cx.save(); cx.translate(x, y); cx.scale(s, s); cx.rotate(opt.lean || 0);
+  cx.fillStyle = opt.pants || '#2a3a55';
+  cx.fillRect(-13, -50, 11, 48); cx.fillRect(2, -50, 11, 48);
+  cx.fillStyle = '#1a1a1a'; cx.fillRect(-17, -4, 17, 5); cx.fillRect(2, -4, 17, 5);
+  cx.fillStyle = opt.shirt || '#1a2b47';
+  cx.fillRect(-16, -96, 33, 47);
+  cx.fillStyle = opt.skin || '#f0c0a0';
+  cx.beginPath(); cx.arc(0, -111, 15, 0, 7); cx.fill();
+  if (opt.hair === 'silver') {
+    cx.fillStyle = '#cfd4dc';
+    cx.beginPath(); cx.arc(0, -116, 15, Math.PI, 0); cx.fill();
+    cx.fillRect(-15, -119, 30, 6);
+  } else if (opt.hair === 'musk') {
+    cx.fillStyle = '#5a4632';
+    cx.beginPath(); cx.arc(0, -114, 15, Math.PI * .95, Math.PI * .05); cx.fill();
+  } // bald: nothing
+  if (opt.glasses) {
+    cx.fillStyle = '#0c1626';
+    cx.fillRect(-12, -115, 10, 6); cx.fillRect(3, -115, 10, 6);
+    cx.fillRect(-3, -113, 7, 2);
+  } else {
+    cx.fillStyle = '#0c1626';
+    cx.fillRect(-7, -114, 3.4, 3.4); cx.fillRect(4, -114, 3.4, 3.4);
+  }
+  cx.strokeStyle = '#0c1626'; cx.lineWidth = 2;
+  cx.beginPath();
+  if (opt.smug) cx.arc(0, -106, 6, .15 * Math.PI, .85 * Math.PI);
+  else cx.arc(0, -100, 5, 1.15 * Math.PI, 1.85 * Math.PI);
+  cx.stroke();
+  cx.restore();
+}
+function armBetween(x1, y1, x2, y2, skin, w) {
+  cx.strokeStyle = skin; cx.lineWidth = w; cx.lineCap = 'round';
+  cx.beginPath(); cx.moveTo(x1, y1); cx.lineTo(x2, y2); cx.stroke();
+}
+function drawCutscene() {
+  const c = S.cut, t = c.t;
+  if (c.scene === 0) drawHandshake(t);
+  else if (c.scene === 1) drawKiss(t);
+  else drawRocket(t);
+}
+function greenBackdrop() {
+  cx.fillStyle = skyGrad('#27395c', '#5d6b8a', '#d99a64');
+  cx.fillRect(0, 0, W, H);
+  cx.fillStyle = 'rgba(229,72,77,.8)';
+  cx.beginPath(); cx.arc(190, 200, 72, 0, 7); cx.fill();
+  cx.fillStyle = 'rgba(229,72,77,.16)';
+  cx.beginPath(); cx.arc(190, 200, 118, 0, 7); cx.fill();
+  cx.fillStyle = '#2e7344'; cx.fillRect(0, 560, W, 160);
+  cx.fillStyle = '#3f8f55'; cx.fillRect(0, 560, W, 8);
+}
+function drawHandshake(t) {
+  greenBackdrop();
+  // Bezos walks in from right
+  const walk = clamp(t / 1.6, 0, 1);
+  const bx = lerp(W + 80, 740, 1 - Math.pow(1 - walk, 3));
+  const shake = walk >= 1 ? Math.sin(t * 14) * 5 : 0;
+  person(540, 560, 1.7, { hair: 'silver', shirt: '#1a2b47', pants: '#b5564a', smug: true });
+  person(bx, 560, 1.75, { hair: 'bald', shirt: '#3a3f4a', pants: '#23262e', glasses: true, smug: true });
+  // joined hands
+  if (walk >= 1) {
+    const hx = 640, hy = 430 + shake;
+    armBetween(565, 425, hx, hy, '#f0c0a0', 12);
+    armBetween(bx - 28, 428, hx, hy, '#e8b48c', 13);
+    cx.fillStyle = '#eebd9a';
+    cx.beginPath(); cx.arc(hx, hy, 11, 0, 7); cx.fill();
+    // sparkles
+    for (let i = 0; i < 7; i++) {
+      const a = t * 2 + i * .9, r = 46 + Math.sin(t * 3 + i) * 12;
+      cx.fillStyle = 'rgba(217,164,65,' + (.5 + Math.sin(t * 5 + i) * .4) + ')';
+      const sx = hx + Math.cos(a) * r, sy = hy + Math.sin(a) * r * .7;
+      star(sx, sy, 5);
+    }
+  }
+  nameplate(540, 620, 'YOHYN WRYN — CEO, Omni.com');
+  if (walk > .6) nameplate(bx, 620, 'JEFF BEZOS — special guest');
+}
+function drawKiss(t) {
+  greenBackdrop();
+  const lean = clamp((t - .6) / 1, 0, 1) * .22;
+  person(560, 560, 1.7, { hair: 'silver', shirt: '#1a2b47', pants: '#b5564a', smug: true });
+  person(720, 560, 1.75, { hair: 'musk', shirt: '#16181d', pants: '#23262e', smug: true, lean: -lean });
+  if (lean >= .21) {
+    // smooch mark + heart burst
+    cx.fillStyle = '#e5484d';
+    cx.font = '700 22px "IBM Plex Mono"'; cx.textAlign = 'center';
+    const pulse = 1 + Math.sin(t * 6) * .12;
+    cx.save(); cx.translate(640, 300); cx.scale(pulse, pulse);
+    heart(0, 0, 34); cx.restore();
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.05 + t, r = 80 + (t * 30 + i * 17) % 60;
+      cx.save(); cx.globalAlpha = .55;
+      heart(640 + Math.cos(a) * r, 300 + Math.sin(a) * r * .6 - (t * 20 % 40), 10);
+      cx.restore();
+    }
+    cx.fillStyle = '#f3ead8'; cx.font = 'italic 700 17px "IBM Plex Mono"';
+    cx.fillText('*smooch*', 648, 240);
+  }
+  nameplate(560, 620, 'YOHYN WRYN');
+  nameplate(720, 620, 'ELON MUSK — emotional investor');
+}
+function drawRocket(t) {
+  // deep space sky
+  const g = cx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#04060e'); g.addColorStop(1, '#101a30');
+  cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  // stars
+  for (let i = 0; i < 90; i++) {
+    const sx = (i * 137.5) % W, sy = (i * 89.3) % (H * .8);
+    cx.globalAlpha = .3 + ((i * 7) % 10) / 14 + Math.sin(t * 2 + i) * .15;
+    cx.fillStyle = '#f3ead8';
+    cx.fillRect(sx, sy, 2, 2);
+  }
+  cx.globalAlpha = 1;
+  // Mars, top right
+  cx.fillStyle = '#c1532f';
+  cx.beginPath(); cx.arc(1120, 130, 46, 0, 7); cx.fill();
+  cx.fillStyle = 'rgba(0,0,0,.18)';
+  cx.beginPath(); cx.arc(1135, 120, 12, 0, 7); cx.fill();
+  cx.beginPath(); cx.arc(1105, 145, 8, 0, 7); cx.fill();
+  cx.fillStyle = '#d9a441'; cx.font = '700 11px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.fillText('MARS · NEW HQ', 1120, 200);
+
+  // Earth at bottom, burning (Don't Look Up style)
+  const ey = 920, er = 330;
+  cx.save();
+  cx.beginPath(); cx.arc(640, ey, er, 0, 7); cx.clip();
+  cx.fillStyle = '#1b4d8a'; cx.fillRect(640 - er, ey - er, er * 2, er * 2);
+  cx.fillStyle = '#2e7344';
+  cx.beginPath(); cx.ellipse(560, ey - er + 80, 110, 60, .4, 0, 7); cx.fill();
+  cx.beginPath(); cx.ellipse(760, ey - er + 130, 90, 50, -.3, 0, 7); cx.fill();
+  // spreading fire
+  const burn = clamp(t / 9, 0, 1);
+  for (let i = 0; i < 40; i++) {
+    const a = i * .157 + Math.sin(i * 5) * .3;
+    const fx = 640 + Math.cos(a) * (er - 40) * rndSeed(i), fy = ey - Math.abs(Math.sin(a)) * (er - 30);
+    if (i / 40 > burn) continue;
+    const fr = 14 + Math.sin(t * 6 + i * 2) * 6 + burn * 22;
+    const fg = cx.createRadialGradient(fx, fy, 0, fx, fy, fr);
+    fg.addColorStop(0, 'rgba(255,220,120,.95)');
+    fg.addColorStop(.5, 'rgba(229,90,40,.8)');
+    fg.addColorStop(1, 'rgba(229,72,77,0)');
+    cx.fillStyle = fg;
+    cx.beginPath(); cx.arc(fx, fy, fr, 0, 7); cx.fill();
+  }
+  cx.restore();
+  // smoke haze over earth
+  cx.fillStyle = 'rgba(40,30,30,' + (burn * .35) + ')';
+  cx.beginPath(); cx.arc(640, ey, er + 10, 0, 7); cx.fill();
+
+  // rocket ascends
+  const ry = lerp(560, -180, Math.pow(clamp(t / 11, 0, 1), 1.35));
+  const rx = 640 + Math.sin(t * 1.1) * 14 + (640 - 640) + clamp(t / 11, 0, 1) * 240; // drift toward Mars
+  cx.save();
+  cx.translate(rx, ry);
+  cx.rotate(.22);
+  // flame
+  const fl = 50 + Math.sin(t * 30) * 14;
+  const flg = cx.createLinearGradient(0, 60, 0, 60 + fl);
+  flg.addColorStop(0, '#ffd861'); flg.addColorStop(1, 'rgba(229,72,77,0)');
+  cx.fillStyle = flg;
+  cx.beginPath(); cx.moveTo(-13, 58); cx.lineTo(13, 58); cx.lineTo(0, 58 + fl); cx.closePath(); cx.fill();
+  // body
+  cx.fillStyle = '#e8dcc2';
+  cx.beginPath();
+  cx.moveTo(0, -70); cx.quadraticCurveTo(24, -28, 22, 30); cx.lineTo(22, 56) ; cx.lineTo(-22, 56); cx.lineTo(-22, 30);
+  cx.quadraticCurveTo(-24, -28, 0, -70); cx.closePath(); cx.fill();
+  cx.fillStyle = '#e5484d';
+  cx.beginPath(); cx.moveTo(0, -70); cx.quadraticCurveTo(24, -28, 22, -6); cx.lineTo(-22, -6); cx.quadraticCurveTo(-24, -28, 0, -70); cx.closePath(); cx.fill();
+  // fins
+  cx.fillStyle = '#e5484d';
+  cx.beginPath(); cx.moveTo(-22, 30); cx.lineTo(-38, 62); cx.lineTo(-22, 56); cx.closePath(); cx.fill();
+  cx.beginPath(); cx.moveTo(22, 30); cx.lineTo(38, 62); cx.lineTo(22, 56); cx.closePath(); cx.fill();
+  // windows with the three of them
+  const faces = [['#f0c0a0', '#cfd4dc'], ['#e8b48c', null], ['#f0c0a0', '#5a4632']];
+  faces.forEach((f, i) => {
+    const wy = 4 + i * 26;
+    cx.fillStyle = '#1a2b47';
+    cx.beginPath(); cx.arc(0, wy, 10, 0, 7); cx.fill();
+    cx.fillStyle = f[0];
+    cx.beginPath(); cx.arc(0, wy + 2, 6, 0, 7); cx.fill();
+    if (f[1]) { cx.fillStyle = f[1]; cx.beginPath(); cx.arc(0, wy - 1, 6, Math.PI, 0); cx.fill(); }
+    cx.fillStyle = '#0c1626';
+    cx.fillRect(-3, wy + 1, 1.6, 1.6); cx.fillRect(1.6, wy + 1, 1.6, 1.6);
+  });
+  cx.fillStyle = '#0c1626'; cx.font = '700 9px "IBM Plex Mono"'; cx.textAlign = 'center';
+  cx.save(); cx.translate(14, 30); cx.rotate(Math.PI / 2); cx.fillText('OMNI ONE', 0, 0); cx.restore();
+  cx.restore();
+
+  // tiny crowd on earth looking up
+  if (burn < .9) {
+    cx.fillStyle = 'rgba(243,234,216,.5)';
+    cx.font = '700 10px "IBM Plex Mono"'; cx.textAlign = 'center';
+    cx.fillText('↑ former employees looking up ↑', 640, ey - er - 14);
+  }
+}
+function rndSeed(i) { return Math.abs(Math.sin(i * 12.989)) * 2 - 1; }
+function star(x, y, r) {
+  cx.save(); cx.translate(x, y);
+  cx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, rr = i % 2 ? r * .4 : r;
+    cx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  cx.closePath(); cx.fill(); cx.restore();
+}
+function heart(x, y, s) {
+  cx.save(); cx.translate(x, y); cx.scale(s / 30, s / 30);
+  cx.fillStyle = '#e5484d';
+  cx.beginPath();
+  cx.moveTo(0, 12);
+  cx.bezierCurveTo(-26, -10, -10, -30, 0, -14);
+  cx.bezierCurveTo(10, -30, 26, -10, 0, 12);
+  cx.closePath(); cx.fill(); cx.restore();
+}
+function nameplate(x, y, txt) {
+  cx.save();
+  cx.font = '700 12px "IBM Plex Mono"'; cx.textAlign = 'center';
+  const w2 = cx.measureText(txt).width + 22;
+  cx.fillStyle = 'rgba(243,234,216,.93)';
+  cx.fillRect(x - w2 / 2, y, w2, 24);
+  cx.fillStyle = '#0c1626';
+  cx.fillText(txt, x, y + 16);
+  cx.restore();
+}
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+let perf = 0, last = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(.033, (ts - last) / 1000 || .016);
+  last = ts; perf = ts;
+
+  cx.save();
+  cx.clearRect(0, 0, W, H);
+  if (S.shakeT > 0) cx.translate(rnd(-5, 5) * S.shakeT, rnd(-5, 5) * S.shakeT);
+
+  if (S.mode === 'menu') {
+    // idle backdrop behind intro
+    S.holeIdx = 0;
+    drawCourse(); drawCEO(HOLES[0]);
+  } else if (S.mode === 'play' || S.mode === 'holedone') {
+    updateBall(dt); updateFx(dt);
+    drawCourse();
+    drawCEO(HOLES[S.holeIdx]);
+    drawBall();
+    drawAim();
+    drawFx();
+  } else if (S.mode === 'cutscene') {
+    updateCutscene(dt);
+    if (S.mode === 'cutscene') drawCutscene();
+  } else if (S.mode === 'end') {
+    drawRocket(13);
+  }
+  cx.restore();
+}
+requestAnimationFrame(frame);
+pushPrice();
+window.__LG = { S, startCutscene, loadHole, holeIn };
+})();
+</script>
+</body>
+</html>
