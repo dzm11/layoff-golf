@@ -418,7 +418,7 @@ const HOLES = [
     water: [{ x1: 680, x2: 885, surf: 614 }], sand: [{ x1: 465, x2: 585 }]
   }
 ];
-const PIT_HALF = 17, PIT_DEPTH = 56, BALL_R = 13;
+const PIT_HALF = 25, PIT_DEPTH = 56, BALL_R = 13;
 const GRAV = 1500, MAX_POW = 1650;
 
 /* ---------------- STATE ---------------- */
@@ -585,10 +585,10 @@ function updateBall(dt) {
     return fireEmployee(DROWN_MSG);
   }
 
-  // sunk?
+  // sunk? (generous: any dip below the rim counts)
   const pit = Math.abs(b.x - hole.holeX) <= PIT_HALF;
   const baseY = baseAt(hole.holeX, hole.ground);
-  if (pit && b.y > baseY + 14) {
+  if (pit && b.y + BALL_R > baseY + 6) {
     b.state = 'sunk';
     b.y = baseY + PIT_DEPTH - BALL_R;
     b.x = hole.holeX;
@@ -601,17 +601,20 @@ function updateBall(dt) {
     b.y = gy - BALL_R;
     const sand = inSand(b.x, hole);
     if (Math.abs(b.vy) > 60) {
-      b.vy = -b.vy * (sand ? .12 : .45);
-      b.vx *= sand ? .35 : .78;
+      b.vy = -b.vy * (sand ? .12 : .38);
+      b.vx *= sand ? .35 : .8;
       b.vr = b.vx * .02;
       if (!sand) sfx.bounce();
       puff(b.x, gy, sand ? '#cdb280' : '#7ec88a');
     } else {
       b.vy = 0;
-      b.vx *= sand ? .76 : .965; // roll friction
+      b.vx *= sand ? .76 : .975; // roll friction
       // slope pull
       const slope = (groundY(b.x + 4, hole) - groundY(b.x - 4, hole)) / 8;
       b.vx += slope * -220 * dt * (slope < -0.2 || slope > 0.2 ? 1 : 0);
+      // the green breaks toward the hole — magnet for rolling balls
+      const dh = hole.holeX - b.x;
+      if (Math.abs(dh) < 120) b.vx += Math.sign(dh) * 460 * dt;
     }
     if (Math.abs(b.vx) < 9 && Math.abs(b.vy) < 9) {
       b.restT += dt;
